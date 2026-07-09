@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MC Asset Hub Pro</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        
+        /* Light Theme Body */
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #1f2937; overflow-x: hidden; user-select: none; overscroll-behavior-y: contain; }
+        ::-webkit-scrollbar { display: none; } 
+
+        /* Header */
+        .app-header { padding: 12px 20px 12px 20px; position: sticky; top: 0; background: rgba(248, 249, 250, 0.85); backdrop-filter: blur(15px); z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .app-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(135deg, #2e7d32, #4caf50); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .back-btn { position: absolute; left: 20px; background: #ffffff; color: #1f2937; border: 1px solid #e5e7eb; padding: 8px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; display: none; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+
+        /* NEW: Hamburger Menu Styles */
+        .menu-btn { position: absolute; right: 20px; background: transparent; border: none; color: #1f2937; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; }
+        .menu-btn svg { width: 28px; height: 28px; fill: currentColor; }
+        .side-menu { position: fixed; top: 0; left: -280px; width: 260px; height: 100vh; background: #ffffff; z-index: 999; transition: left 0.3s ease; box-shadow: 4px 0 15px rgba(0,0,0,0.1); padding: 25px 20px; display: flex; flex-direction: column; }
+        .side-menu.open { left: 0; }
+        .menu-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 998; opacity: 0; visibility: hidden; transition: 0.3s ease; }
+        .menu-overlay.active { opacity: 1; visibility: visible; }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .menu-close { background: #f3f4f6; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 14px; color: #1f2937; cursor: pointer; font-weight: bold; }
+        .menu-item { display: flex; align-items: center; gap: 12px; padding: 15px 0; color: #1f2937; text-decoration: none; font-size: 16px; font-weight: 600; border-bottom: 1px solid #f3f4f6; }
+        .menu-item svg { width: 22px; height: 22px; fill: #4caf50; }
+
+        /* Search */
+        .search-container { padding: 5px 20px 15px 20px; }
+        .search-box { position: relative; width: 100%; }
+        .search-box input { width: 100%; background: #ffffff; border: 1px solid #e5e7eb; padding: 16px 16px 16px 46px; border-radius: 20px; color: #1f2937; font-size: 15px; outline: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: border-color 0.2s; }
+        .search-box input:focus { border-color: #4caf50; }
+        .search-box input::placeholder { color: #9ca3af; }
+        .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; fill: none; stroke: #9ca3af; stroke-width: 2.5; stroke-linecap: round; }
+        
+        /* Popular Maps Slider */
+        .popular-section { padding: 0 0 15px 0; }
+        .section-title { padding: 0 20px 10px 20px; font-size: 18px; font-weight: 800; color: #1f2937; }
+        .slider-container { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px 15px 20px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+        .slider-card { flex: 0 0 260px; scroll-snap-align: center; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.03); position: relative; cursor: pointer; }
+        .slider-card:active { transform: scale(0.97); transition: 0.1s; }
+        .slider-thumb { width: 100%; height: 130px; background: #e5e7eb; position: relative; }
+        .slider-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .slider-info { padding: 12px 15px; }
+        .slider-info h3 { font-size: 15px; color: #1f2937; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .slider-badge { position: absolute; top: 10px; left: 10px; background: #ef4444; color: #ffffff; padding: 4px 10px; font-size: 10px; font-weight: bold; border-radius: 12px; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3); z-index: 2; }
+
+        /* Categories */
+        .category-menu { display: flex; gap: 10px; overflow-x: auto; padding: 0 20px 15px 20px; scrollbar-width: none; }
+        .cat-btn { background: #ffffff; border: 1px solid #e5e7eb; color: #4b5563; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; white-space: nowrap; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .cat-btn.active { background: #4caf50; border-color: #4caf50; color: #ffffff; }
+
+        /* Pages */
+        .page { padding: 0 20px 60px 20px; display: none; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Grid & Tiles */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px; }
+        .card { background: #ffffff; border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.03); transition: transform 0.1s; }
+        .card:active { transform: scale(0.96); }
+        .thumb-box { width: 100%; height: 160px; background: #f3f4f6; position: relative; }
+        .thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+        .badge { position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.85); color: #1f2937; padding: 5px 10px; font-size: 10px; font-weight: bold; border-radius: 12px; backdrop-filter: blur(10px); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .card-info { padding: 16px; }
+        .card-info h3 { font-size: 16px; color: #1f2937; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+
+        /* Detail Page */
+        .detail-container { 
+            background: #ffffff; 
+            border-radius: 28px; 
+            overflow: hidden; 
+            margin-top: 30px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        
+        /* 3D Viewer */
+        #viewer-3d { width: 100%; height: 380px; background: #000000; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #222; }
+        .canvas-hint { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); padding: 8px 16px; font-size: 12px; border-radius: 20px; color: #fff; backdrop-filter: blur(10px); pointer-events: none; z-index: 10; }
+        .loading-text { position: absolute; color: #4caf50; font-size: 14px; font-weight: bold; z-index: 5; }
+        
+        /* 2D Image Gallery Viewer */
+        #viewer-2d-container { 
+            position: relative; 
+            width: 100%; 
+            height: 250px; 
+            background: #000000; 
+            display: none; 
+            overflow: hidden; 
+        }
+
+        #viewer-2d { 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            overflow-x: auto; 
+            scroll-snap-type: x mandatory; 
+            scrollbar-width: none; 
+        }
+
+        .gallery-img { 
+            flex: 0 0 100%; 
+            width: 100%;
+            height: 100%; 
+            object-fit: contain; 
+            object-position: center; 
+            scroll-snap-align: center; 
+        }
+
+        .detail-body { padding: 25px; }
+        .detail-type { color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+        .detail-title { font-size: 26px; color: #1f2937; margin-bottom: 12px; font-weight: 800; line-height: 1.2; }
+        .detail-desc { font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 30px; }
+        .btn { background: #4caf50; color: #ffffff; border: none; padding: 18px; width: 100%; border-radius: 20px; font-weight: 800; font-size: 16px; box-shadow: 0 4px 14px rgba(76, 175, 80, 0.4); }
+        .btn:active { transform: scale(0.97); }
+        
+        /* Bottom Navigation */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-around; padding: 8px 10px 10px 10px; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9ca3af; font-size: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .nav-item.active { color: #4caf50; }
+        .nav-item svg { width: 20px; height: 20px; fill: currentColor; }
+    </style>
+</head>
+<body>
+
+    <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
+    <div class="side-menu" id="side-menu">
+        <div class="menu-header">
+            <h2 class="app-title" style="font-size: 20px;">Menu</h2>
+            <button class="menu-close" onclick="toggleMenu()">✕</button>
+        </div>
+        <a href="mailto:pravinsinh182@gmail.com" class="menu-item">
+            <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+            Contact Me
+        </a>
+    </div>
+
+    <header class="app-header">
+        <h1 class="app-title" id="nav-title">Asset Hub</h1>
+        <button class="back-btn" id="back-button" onclick="showHomePage()">Back</button>
+        <button class="menu-btn" id="menu-button" onclick="toggleMenu()">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+    </header>
+
+    <div id="home-page" class="page active">
+        <div class="search-container">
+            <div class="search-box">
+                <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="search-input" placeholder="Search files..." oninput="filterAssets()">
+            </div>
+        </div>
+        
+        <div class="popular-section">
+            <h3 class="section-title">Popular Maps</h3>
+            <div class="slider-container" id="popular-slider"></div>
+        </div>
+
+        <div class="category-menu">
+            <button class="cat-btn active" id="cat-all" onclick="selectCategory('All')">All</button>
+            <button class="cat-btn" id="cat-maps" onclick="selectCategory('Minecraft Map')">Maps</button>
+            <button class="cat-btn" id="cat-models" onclick="selectCategory('3D Model')">Models</button>
+        </div>
+
+        <div class="grid" id="asset-grid"></div>
+    </div>
+
+    <div id="detail-page" class="page">
+        <div class="detail-container">
+            
+            <div id="viewer-3d">
+                <span class="canvas-hint">Swipe to rotate 3D</span>
+                <span id="viewer-loading" class="loading-text"></span>
+            </div>
+
+            <div id="viewer-2d-container">
+                <span class="canvas-hint" id="gallery-hint">Swipe for more images</span>
+                <div id="viewer-2d"></div>
+            </div>
+
+            <div class="detail-body">
+                <div id="detail-item-type" class="detail-type"></div>
+                <h2 id="detail-title" class="detail-title"></h2>
+                <p id="detail-description" class="detail-desc"></p>
+                <button id="download-button" class="btn">Watch Ad to Download</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav" id="bottom-nav">
+        <div class="nav-item active" id="nav-home" onclick="showHomePage()">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span>Home</span>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
