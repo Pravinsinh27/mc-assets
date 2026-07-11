@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">MC Assets</string>
-    <string name="title_activity_main">MC Assets</string>
-    <string name="package_name">com.mcassets.app</string>
-    <string name="custom_url_scheme">com.mcassets.app</string>
-</resources>
